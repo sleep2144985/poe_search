@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'widgets/main_widgets.dart';
 import 'widgets/filter_widgets.dart';
 import 'package:expandable/expandable.dart';
+import 'package:autocomplete_textfield/autocomplete_textfield.dart';
 
 void main() => runApp(MyApp());
 
@@ -59,6 +60,7 @@ String linksmax;
 bool first;
 Alert nullAlert;
 bool searchflag;
+String filtertext="";
 class _MyHomePageState extends State<MyHomePage> {
   TextEditingController _mincontroller;
   TextEditingController _maxcontroller;
@@ -91,10 +93,12 @@ class _MyHomePageState extends State<MyHomePage> {
     return MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(
-          resizeToAvoidBottomPadding: false,
-            body: Container(
-                child: Column(
+            body: ListView(
           children: <Widget>[
+            ListView(
+              shrinkWrap: true,
+              physics: ClampingScrollPhysics(),
+              children: <Widget>[
             searchInput((String value) {
               submitText = value;
             },(){
@@ -159,7 +163,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     ],
                   ),
                   collapsed: null,
-                )),
+                ))]),
             Container(
                 width: double.infinity,
                 padding: EdgeInsets.only(left: 20.0, right: 20.0),
@@ -178,14 +182,15 @@ class _MyHomePageState extends State<MyHomePage> {
                       });
                     }
                     await search();
+                    setState(() {});
                     searchflag=false;
                   },
                 )),
-            Expanded(
-                child: ListView.builder(
+            ListView.builder(
+              shrinkWrap: true,
+              physics:  ClampingScrollPhysics(),
               itemCount: listLength,
               itemBuilder: (BuildContext context, int index) {
-                String output = "";
                 if (first && displayItem.length == 0 && index == 0) {
                   return new Container(
                       alignment: Alignment.center,
@@ -196,14 +201,14 @@ class _MyHomePageState extends State<MyHomePage> {
                         style: TextStyle(fontSize: 20, color: Colors.grey),
                         textAlign: TextAlign.center,
                       ));
-                } else {
+                } else if(displayItem.length !=0 && displayItemId.length!=0) {
                   Map item = displayItem[displayItemId[index]];
                   int currencyIndex = allcurrency.indexOf(nowcurrency);
                   String url = currencyIcon[allcode[currencyIndex]];
                   return new SingleChildScrollView(
                       child: Container(
                           margin: const EdgeInsets.symmetric(
-                              vertical: 1.5, horizontal: 5.0),
+                              vertical: 1.5, horizontal: 10.0),
                           color: Colors.grey,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.start,
@@ -220,8 +225,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                   color: Colors.grey,
                                 ),
                               ),
-                              Expanded(
-                                  child: ConstrainedBox(
+                              Expanded(child:ConstrainedBox(
                                       constraints: new BoxConstraints(
                                         minHeight: 240,
                                       ),
@@ -314,9 +318,9 @@ class _MyHomePageState extends State<MyHomePage> {
                           )));
                 }
               },
-            )),
+            ),
           ],
-        ))));
+        )));
   }
 
   void search() async {
@@ -338,7 +342,8 @@ class _MyHomePageState extends State<MyHomePage> {
         }
         selectedleague = leagues[0];
       }
-    }).whenComplete(() => setState(() {}));
+    });
+    setState(() {});
   }
 
   void fetchAllItem() async {
@@ -459,7 +464,7 @@ class _MyHomePageState extends State<MyHomePage> {
             displayItem[id[i]] = item;
           }
         }
-      }).whenComplete(() => setState(() {}));
+      });
     }
   }
 }
