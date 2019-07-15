@@ -25,6 +25,7 @@ class MyHomePage extends StatefulWidget {
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
+
 int listLength = 1;
 String searchText = "";
 String searchId;
@@ -60,11 +61,20 @@ String linksmax;
 bool first;
 Alert nullAlert;
 bool searchflag;
-String filtertext="";
+String filtertext = "";
+
 class _MyHomePageState extends State<MyHomePage> {
+  ScrollController _scrollController = new ScrollController();
   TextEditingController _mincontroller;
   TextEditingController _maxcontroller;
-  ExpandableController _expandableController = new ExpandableController(initialExpanded: false);
+  ExpandableController _expandableController =
+      new ExpandableController(initialExpanded: false);
+  GlobalKey<AutoCompleteTextFieldState<String>> key = new GlobalKey();
+  List<String> suggestions = [
+    "火焰抗性",
+    "冰冷抗性",
+    "閃電抗性",
+  ];
   @override
   void initState() {
     super.initState();
@@ -94,101 +104,136 @@ class _MyHomePageState extends State<MyHomePage> {
         debugShowCheckedModeBanner: false,
         home: Scaffold(
             body: ListView(
+          shrinkWrap: true,
+          controller: _scrollController,
           children: <Widget>[
             ListView(
-              shrinkWrap: true,
-              physics: ClampingScrollPhysics(),
-              children: <Widget>[
-            searchInput((String value) {
-              submitText = value;
-            },(){
-              if(_expandableController.expanded)
-                _expandableController.toggle();
-            },(String value) async {
-              submitText = value;
-              await search();
-            }),
-            Container(
-                padding: EdgeInsets.only(left: 20.0, top: 10.0),
-                child: ExpandablePanel(
-                  controller: _expandableController,
-                  tapHeaderToExpand: true,
-                  tapBodyToCollapse: true,
-                  headerAlignment: ExpandablePanelHeaderAlignment.center,
-                  header: Padding(
-                      padding: EdgeInsets.all(10),
-                      child: Text(
-                        "顯示篩選",
-                        style: Theme.of(context).textTheme.body2,
-                      )),
-                  expanded: Column(
-                    children: <Widget>[
-                      Container(
-                          alignment: Alignment.centerLeft,
-                          padding: EdgeInsets.only(left: 10.0, top: 10.0),
-                          child: Row(
-                            children: <Widget>[
-                              Container(color: Color(0xffe2e2e2),
-                                child: 
-                            dropDownList(
-                              allcurrency,
-                              selectedprice,
-                              (String newValue) {
-                                setState(() {
-                                  selectedprice = newValue;
-                                });
-                              },
+                shrinkWrap: true,
+                physics: ClampingScrollPhysics(),
+                children: <Widget>[
+                  searchInput((String value) {
+                    submitText = value;
+                  }, () {
+                    if (_expandableController.expanded)
+                      _expandableController.toggle();
+                  }, (String value) async {
+                    submitText = value;
+                    await search();
+                  }),
+                  Container(
+                      padding: EdgeInsets.only(left: 20.0, top: 10.0),
+                      child: ExpandablePanel(
+                        controller: _expandableController,
+                        tapHeaderToExpand: true,
+                        tapBodyToCollapse: true,
+                        headerAlignment: ExpandablePanelHeaderAlignment.center,
+                        header: Padding(
+                            padding: EdgeInsets.all(10),
+                            child: Text(
+                              "顯示篩選",
+                              style: Theme.of(context).textTheme.body2,
                             )),
-                            Padding(
-                              padding: EdgeInsets.all(5),
-                            ),
-                             Container(color: Color(0xffe2e2e2),
-                                child: 
-                            dropDownList(
-                              leagues,
-                              selectedleague,
-                              (String newValue) {
-                                setState(() {
-                                  selectedleague = newValue;
-                                });
-                              },
-                            ))
-                          ])),
-                      valueFilter("插槽連結", _mincontroller, _maxcontroller,
-                          (String value) {
-                        linksmin = value;
-                      }, (String value) {
-                        linksmax = value;
-                      }),
-                    ],
-                  ),
-                  collapsed: null,
-                ))]),
+                        expanded: Column(
+                          children: <Widget>[
+                            Container(
+                                alignment: Alignment.centerLeft,
+                                padding: EdgeInsets.only(left: 10.0, top: 10.0),
+                                child: Row(children: <Widget>[
+                                  Container(
+                                      color: Color(0xffe2e2e2),
+                                      child: dropDownList(
+                                        allcurrency,
+                                        selectedprice,
+                                        (String newValue) {
+                                          setState(() {
+                                            selectedprice = newValue;
+                                          });
+                                        },
+                                      )),
+                                  Padding(
+                                    padding: EdgeInsets.all(5),
+                                  ),
+                                  Container(
+                                      color: Color(0xffe2e2e2),
+                                      child: dropDownList(
+                                        leagues,
+                                        selectedleague,
+                                        (String newValue) {
+                                          setState(() {
+                                            selectedleague = newValue;
+                                          });
+                                        },
+                                      ))
+                                ])),
+                            valueFilter("插槽連結", _mincontroller, _maxcontroller,
+                                (String value) {
+                              linksmin = value;
+                            }, (String value) {
+                              linksmax = value;
+                            }),
+                            Container(
+                                padding: EdgeInsets.all(10),
+                                child: AutoCompleteTextField<String>(
+                                  itemSubmitted: (item) => (print(item)),
+                                  itemBuilder: (context, suggestion) =>
+                                      new ListTile(title: new Text(suggestion)),
+                                  onTap: () async { 
+                                    await new Future.delayed(new Duration(milliseconds: 1000));
+                                    _scrollController.animateTo(
+                                         _scrollController.position.maxScrollExtent,
+                                         duration: Duration(milliseconds: 300),
+                                         curve: Curves.ease);
+                                  },
+                                  onFocusChanged: (bool changed) {
+                                    if (changed)
+                                      _scrollController.jumpTo(_scrollController
+                                          .position.maxScrollExtent);
+                                  },
+                                  itemSorter: (a, b) =>
+                                      a == b ? 0 : a.length > b.length ? -1 : 1,
+                                  itemFilter: (suggestion, input) => suggestion
+                                      .toLowerCase()
+                                      .startsWith(input.toLowerCase()),
+                                  key: key,
+                                  decoration: new InputDecoration(
+                                      hintText: "+新增數值過濾",
+                                      border: InputBorder.none,
+                                      fillColor: Color(0xffe2e2e2),
+                                      filled: true),
+                                  controller: TextEditingController(),
+                                  suggestions: suggestions,
+                                  textChanged: (text) => filtertext = text,
+                                  submitOnSuggestionTap: true,
+                                ))
+                          ],
+                        ),
+                        collapsed: null,
+                      ))
+                ]),
             Container(
                 width: double.infinity,
                 padding: EdgeInsets.only(left: 20.0, right: 20.0),
                 child: RaisedButton(
-                  child:
-                      new Text(
-                         searchflag ? "搜尋中..." : "搜尋",
-                         style: TextStyle(color: Colors.white)),
+                  child: new Text(searchflag ? "搜尋中..." : "搜尋",
+                      style: TextStyle(color: Colors.white)),
                   color: Color(0xff0f304d),
                   elevation: 4.0,
                   splashColor: Colors.blueGrey,
-                  onPressed: searchflag ? null : () async {
-                    if(!searchflag) {
-                      searchflag=true;
-                      setState(() {
-                      });
-                    }
-                    await search();
-                    setState(() {});
-                    searchflag=false;
-                  },
+                  onPressed: searchflag
+                      ? null
+                      : () async {
+                          if (!searchflag) {
+                            searchflag = true;
+                            setState(() {});
+                          }
+                          await search();
+                          setState(() {});
+                          searchflag = false;
+                        },
                 )),
             ListView.builder(
               shrinkWrap: true,
-              physics:  ClampingScrollPhysics(),
+              physics: ClampingScrollPhysics(),
               itemCount: listLength,
               itemBuilder: (BuildContext context, int index) {
                 if (first && displayItem.length == 0 && index == 0) {
@@ -201,7 +246,8 @@ class _MyHomePageState extends State<MyHomePage> {
                         style: TextStyle(fontSize: 20, color: Colors.grey),
                         textAlign: TextAlign.center,
                       ));
-                } else if(displayItem.length !=0 && displayItemId.length!=0) {
+                } else if (displayItem.length != 0 &&
+                    displayItemId.length != 0) {
                   Map item = displayItem[displayItemId[index]];
                   int currencyIndex = allcurrency.indexOf(nowcurrency);
                   String url = currencyIcon[allcode[currencyIndex]];
@@ -225,7 +271,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                   color: Colors.grey,
                                 ),
                               ),
-                              Expanded(child:ConstrainedBox(
+                              Expanded(
+                                  child: ConstrainedBox(
                                       constraints: new BoxConstraints(
                                         minHeight: 240,
                                       ),
@@ -327,7 +374,7 @@ class _MyHomePageState extends State<MyHomePage> {
     await searchMarket(submitText);
     if (itemId.length == 0) {
       nullAlert.show();
-    } else{
+    } else {
       await fetchAllItem();
     }
   }
@@ -389,8 +436,7 @@ class _MyHomePageState extends State<MyHomePage> {
       if (response.statusCode == 200) {
         searchId = response.data['id'];
         itemId = new List<String>.from(response.data['result']);
-        if(itemId.length!=0)
-          displayItem = {};
+        if (itemId.length != 0) displayItem = {};
         for (int i = 0; i < itemId.length; i++) {
           displayItem[itemId[i]] = {};
         }

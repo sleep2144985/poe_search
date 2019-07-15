@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'main_widgets.dart';
+import 'package:search_widget/search_widget.dart';
 
 Container searchInput(void onChanged(String value), void onTap(),
     void onSubmitted(String value)) {
@@ -27,7 +28,7 @@ Container valueFilter(
     void maxChanged(String value)) {
   return Container(
       padding:
-          EdgeInsets.only(left: 10.0, bottom: 10.0, right: 10.0, top: 10.0),
+          EdgeInsets.only(left: 10.0, right: 10.0, top: 10.0),
       child: Row(children: <Widget>[
         Expanded(
             child: Container(
@@ -71,3 +72,4 @@ Container valueFilter(
                 )))
       ]));
 }
+
