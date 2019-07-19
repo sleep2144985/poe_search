@@ -4,10 +4,11 @@ import 'package:dio/dio.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
-import 'widgets/main_widgets.dart';
-import 'widgets/filter_widgets.dart';
+import 'widgets/result.dart';
+import 'widgets/search.dart';
 import 'package:expandable/expandable.dart';
 import 'package:autocomplete_textfield/autocomplete_textfield.dart';
+import 'api.dart';
 
 void main() => runApp(MyApp());
 
@@ -26,25 +27,7 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-int listLength = 1;
-String searchText = "";
-String searchId;
-List<String> itemId;
-List<String> displayItemId;
-String selectedprice = "混沌石";
-String selectedleague = "";
-List<String> leagues = [];
-String nowcurrency;
-List<String> allcurrency = <String>["混沌石", "崇高石", "鏈結石"];
-List<String> allcode = <String>["chaos", "exa", "fusing"];
-String baseUrl = "https://web.poe.garena.tw/";
-String imgUrl = "https://web.poe.garena.tw/image/Art/2DItems/";
-String currencyUrl = imgUrl + "Currency/";
-Map currencyIcon = {
-  "chaos": currencyUrl + "CurrencyRerollRare.png",
-  "exa": currencyUrl + "CurrencyAddModToRare.png",
-  "fusing": currencyUrl + "CurrencyRerollSocketLinks.png"
-};
+
 List<Color> frameType = [
   Color(0xffc8c8c8),
   Color(0xff8888ff),
@@ -53,16 +36,7 @@ List<Color> frameType = [
   Color(0xff1ba29b),
   Color(0xffaa9e82)
 ];
-Map<String, Object> displayItem = new HashMap();
-Dio dio = new Dio();
-String submitText = "";
-String linksmin;
-String linksmax;
-bool first;
-Alert nullAlert;
-bool searchflag;
-String filtertext = "";
-
+api apitool = new api();
 class _MyHomePageState extends State<MyHomePage> {
   ScrollController _scrollController = new ScrollController();
   TextEditingController _mincontroller;
@@ -78,14 +52,16 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    first = true;
-    searchflag = false;
-    getleagues();
+    apitool.first = true;
+    apitool.searchflag = false;
+    apitool.getleagues();
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    nullAlert = Alert(
+    List<Widget> filterpanel;
+    apitool.nullAlert = Alert(
       context: context,
       type: AlertType.warning,
       title: "查詢結果為空 QQ",
@@ -112,13 +88,13 @@ class _MyHomePageState extends State<MyHomePage> {
                 physics: ClampingScrollPhysics(),
                 children: <Widget>[
                   searchInput((String value) {
-                    submitText = value;
+                    apitool.submitText = value;
                   }, () {
                     if (_expandableController.expanded)
                       _expandableController.toggle();
                   }, (String value) async {
-                    submitText = value;
-                    await search();
+                    apitool.submitText = value;
+                    await apitool.search(context);
                   }),
                   Container(
                       padding: EdgeInsets.only(left: 20.0, top: 10.0),
@@ -142,11 +118,11 @@ class _MyHomePageState extends State<MyHomePage> {
                                   Container(
                                       color: Color(0xffe2e2e2),
                                       child: dropDownList(
-                                        allcurrency,
-                                        selectedprice,
+                                        apitool.allcurrency,
+                                        apitool.selectedprice,
                                         (String newValue) {
                                           setState(() {
-                                            selectedprice = newValue;
+                                            apitool.selectedprice = newValue;
                                           });
                                         },
                                       )),
@@ -156,21 +132,21 @@ class _MyHomePageState extends State<MyHomePage> {
                                   Container(
                                       color: Color(0xffe2e2e2),
                                       child: dropDownList(
-                                        leagues,
-                                        selectedleague,
+                                        apitool.leagues,
+                                        apitool.selectedleague,
                                         (String newValue) {
                                           setState(() {
-                                            selectedleague = newValue;
+                                            apitool.selectedleague = newValue;
                                           });
                                         },
                                       ))
                                 ])),
                             valueFilter("插槽連結", _mincontroller, _maxcontroller,
                                 (String value) {
-                              linksmin = value;
+                              apitool.linksmin = value;
                             }, (String value) {
-                              linksmax = value;
-                            }),
+                              apitool.linksmax = value;
+                            },(){print("K");}),
                             Container(
                                 padding: EdgeInsets.all(10),
                                 child: AutoCompleteTextField<String>(
@@ -202,7 +178,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                       filled: true),
                                   controller: TextEditingController(),
                                   suggestions: suggestions,
-                                  textChanged: (text) => filtertext = text,
+                                  textChanged: (text) => apitool.filtertext = text,
                                   submitOnSuggestionTap: true,
                                 ))
                           ],
@@ -214,29 +190,29 @@ class _MyHomePageState extends State<MyHomePage> {
                 width: double.infinity,
                 padding: EdgeInsets.only(left: 20.0, right: 20.0),
                 child: RaisedButton(
-                  child: new Text(searchflag ? "搜尋中..." : "搜尋",
+                  child: new Text(apitool.searchflag ? "搜尋中..." : "搜尋",
                       style: TextStyle(color: Colors.white)),
                   color: Color(0xff0f304d),
                   elevation: 4.0,
                   splashColor: Colors.blueGrey,
-                  onPressed: searchflag
+                  onPressed: apitool.searchflag
                       ? null
                       : () async {
-                          if (!searchflag) {
-                            searchflag = true;
+                          if (!apitool.searchflag) {
+                            apitool.searchflag = true;
                             setState(() {});
                           }
-                          await search();
+                          await apitool.search(context);
                           setState(() {});
-                          searchflag = false;
+                          apitool.searchflag = false;
                         },
                 )),
             ListView.builder(
               shrinkWrap: true,
               physics: ClampingScrollPhysics(),
-              itemCount: listLength,
+              itemCount: apitool.listLength,
               itemBuilder: (BuildContext context, int index) {
-                if (first && displayItem.length == 0 && index == 0) {
+                if (apitool.first && apitool.displayItem.length == 0 && index == 0) {
                   return new Container(
                       alignment: Alignment.center,
                       margin: const EdgeInsets.symmetric(
@@ -246,11 +222,11 @@ class _MyHomePageState extends State<MyHomePage> {
                         style: TextStyle(fontSize: 20, color: Colors.grey),
                         textAlign: TextAlign.center,
                       ));
-                } else if (displayItem.length != 0 &&
-                    displayItemId.length != 0) {
-                  Map item = displayItem[displayItemId[index]];
-                  int currencyIndex = allcurrency.indexOf(nowcurrency);
-                  String url = currencyIcon[allcode[currencyIndex]];
+                } else if (apitool.displayItem.length != 0 &&
+                    apitool.displayItemId.length != 0) {
+                  Map item = apitool.displayItem[apitool.displayItemId[index]];
+                  int currencyIndex = apitool.allcurrency.indexOf(apitool.nowcurrency);
+                  String url = apitool.currencyIcon[apitool.allcode[currencyIndex]];
                   return new SingleChildScrollView(
                       child: Container(
                           margin: const EdgeInsets.symmetric(
@@ -264,7 +240,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                 height: 240,
                                 child: Container(
                                   child: Image.network(
-                                    baseUrl.substring(0, baseUrl.length - 1) +
+                                    apitool.baseUrl.substring(0, apitool.baseUrl.length - 1) +
                                         item['icon'],
                                     fit: BoxFit.scaleDown,
                                   ),
@@ -370,147 +346,5 @@ class _MyHomePageState extends State<MyHomePage> {
         )));
   }
 
-  void search() async {
-    await searchMarket(submitText);
-    if (itemId.length == 0) {
-      nullAlert.show();
-    } else {
-      await fetchAllItem();
-    }
-  }
-
-  void getleagues() async {
-    String url = baseUrl + "/api/trade/data/leagues";
-    await dio.get(url).then((response) {
-      if (response.statusCode == 200) {
-        List<dynamic> result = response.data['result'];
-        for (int i = 0; i < result.length; i++) {
-          leagues.add(result[i]['text']);
-        }
-        selectedleague = leagues[0];
-      }
-    });
-    setState(() {});
-  }
-
-  void fetchAllItem() async {
-    if (itemId.length != 0) {
-      listLength = itemId.length;
-      displayItemId = itemId;
-      for (int i = 0; i < itemId.length; i += 10) {
-        int end = i + 10;
-        if (end > itemId.length) {
-          end = itemId.length;
-        }
-        await fetchItems(itemId.sublist(i, end), searchId);
-      }
-    }
-  }
-
-  void searchMarket(String value) async {
-    first = false;
-    String searchUrl = baseUrl + 'api/trade/search/' + selectedleague;
-    nowcurrency = selectedprice;
-    String data = await DefaultAssetBundle.of(context)
-        .loadString("assets/searchparam.json");
-    Map jsonResult = json.decode(data);
-    int linksminval = null;
-    int linksmaxval = null;
-    if (linksmin != null && linksmin != "") linksminval = int.parse(linksmin);
-    if (linksmax != null && linksmax != "") linksmaxval = int.parse(linksmax);
-    jsonResult['query']['term'] = value;
-    jsonResult['query']['filters']['socket_filters']['filters']['links']
-        ['min'] = linksminval;
-    jsonResult['query']['filters']['socket_filters']['filters']['links']
-        ['max'] = linksmaxval;
-    jsonResult['query']['filters']['trade_filters']['filters']['price']
-        ['option'] = allcode[allcurrency.indexOf(nowcurrency)];
-    Map params = jsonResult;
-    Map<String, String> headers = {
-      'Content-type': 'application/json',
-      'Accept': '*/*'
-    };
-    Options option = Options(method: 'post');
-    option.headers.addAll(headers);
-    await dio.post(searchUrl, options: option, data: params).then((response) {
-      if (response.statusCode == 200) {
-        searchId = response.data['id'];
-        itemId = new List<String>.from(response.data['result']);
-        if (itemId.length != 0) displayItem = {};
-        for (int i = 0; i < itemId.length; i++) {
-          displayItem[itemId[i]] = {};
-        }
-      }
-    });
-  }
-
-  String executeMods(dynamic mods) {
-    String tmp = "";
-    if (mods != null) {
-      List<dynamic> modlist = mods;
-      tmp = modlist.join("\n");
-    }
-    return tmp;
-  }
-
-  String executeSockets(dynamic sockets) {
-    String tmp = "";
-    if (sockets != null) {
-      Map<int, String> socket = {};
-      List<dynamic> socketlist = sockets;
-      for (int i = 0; i < socketlist.length; i++) {
-        int group = socketlist[i]['group'];
-        if (socket[group] == null) socket[group] = "";
-        socket[group] += socketlist[i]['sColour'];
-      }
-      socket.forEach((k, v) {
-        tmp += v + "|";
-      });
-      tmp = tmp.substring(0, tmp.length - 1);
-    }
-    return tmp;
-  }
-
-  void fetchItems(List<String> id, String queryUrl) async {
-    if (id.length > 0) {
-      String fetchUrl = baseUrl + "api/trade/fetch/" + id.join(",");
-      Map<String, String> headers = {
-        'query': queryUrl,
-      };
-      Options option = Options(method: 'get');
-      option.headers.addAll(headers);
-      await dio.get(fetchUrl, options: option).then((response) {
-        if (response.statusCode == 200) {
-          for (int i = 0; i < id.length; i++) {
-            Map item = displayItem[id[i]];
-            dynamic result = response.data['result'][i];
-            item['price'] = result['listing']['price']['amount'];
-            item['icon'] = result['item']['icon'];
-            item['name'] = result['item']['name'];
-            item['typeLine'] = result['item']['typeLine'];
-            item['indexed'] = result['listing']['indexed'];
-            item['account'] = {'name': ""};
-            item['account']['name'] =
-                result['listing']['account']['lastCharacterName'];
-            DateTime dt = DateTime.parse(item['indexed']);
-            item['indexed'] = new DateFormat("yyyy-MM-dd").format(dt);
-            if (item['typeLine'] != "") {
-              item['typeLine'] = "<" + item['typeLine'] + '>';
-            }
-            item['sockets'] = executeSockets(result['item']['sockets']);
-            item['ilvl'] = result['item']['ilvl'];
-            item['frameType'] = result['item']['frameType'];
-            if (item['frameType'] > 5) item['frameType'] = 5;
-            item['implicitMods'] = executeMods(result['item']['implicitMods']);
-            item['explicitMods'] = executeMods(result['item']['explicitMods']);
-            if (result['item']['identified'] == false)
-              item['explicitMods'] = "未鑑定";
-            item['corrupted'] = result['item']['corrupted'];
-            if (item['corrupted'] == null) item['corrupted'] = false;
-            displayItem[id[i]] = item;
-          }
-        }
-      });
-    }
-  }
+ 
 }
