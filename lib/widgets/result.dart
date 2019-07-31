@@ -59,11 +59,12 @@ Widget contentdivider(String content) {
 }
 
 Widget dropDownList(
-    List<String> list, String selected, void onChanged(String value)) {
+    List<String> list, String selected, void onChanged(String value), [bool isExpanded=false]) {
   return new DropdownButtonHideUnderline(
       child: ButtonTheme(
           alignedDropdown: true,
           child: DropdownButton<String>(
+            isExpanded: isExpanded,
               value: selected,
               items: list.map<DropdownMenuItem<String>>((String value) {
                 return DropdownMenuItem<String>(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
+import 'package:poe_search/affix.dart';
+import 'package:poe_search/affix_controller.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
 import 'dart:collection';
 import 'dart:convert';
@@ -15,20 +17,45 @@ class api {
   String selectedleague = "";
   List<String> leagues = [];
   String nowcurrency;
-  List<String> allcurrency = <String>["混沌石", "崇高石", "鏈結石"];
-  List<String> allcode = <String>["chaos", "exa", "fusing"];
+  List<String> allcurrency = <String>[
+    "混沌石",
+    "崇高石",
+    "鏈結石",
+    "神聖石",
+    "點金石",
+    "改造石",
+    "後悔石",
+    "工匠石",
+    "富豪石",
+    "瓦爾寶珠"
+  ];
+  List<String> allcode = <String>[
+    "chaos",
+    "exa",
+    "fusing",
+    "divine",
+    "alch",
+    "alt",
+    "regret",
+    "jew",
+    "regal",
+    "vaal"
+  ];
   String baseUrl = "https://web.poe.garena.tw/";
   String imgUrl = "https://web.poe.garena.tw/image/Art/2DItems/";
   String currencyUrl;
   Map currencyIcon;
   Map<String, Object> displayItem = new HashMap();
   String submitText = "";
-  String linksmin;
-  String linksmax;
+  String linksmin = null;
+  String linksmax = null;
+  String paymin = null;
+  String paymax = null;
   bool first;
   Alert nullAlert;
   bool searchflag;
   String filtertext = "";
+  List<affix_controller> affix_selected;
   Dio dio = new Dio();
   api() {
     currencyUrl = imgUrl + "Currency/";
@@ -47,7 +74,7 @@ class api {
     }
   }
 
-  void getleagues() async {
+  Future<void> getleagues() async {
     String url = baseUrl + "/api/trade/data/leagues";
     await dio.get(url).then((response) {
       if (response.statusCode == 200) {
@@ -81,17 +108,20 @@ class api {
     String data = await DefaultAssetBundle.of(context)
         .loadString("assets/searchparam.json");
     Map jsonResult = json.decode(data);
-    int linksminval = null;
-    int linksmaxval = null;
-    if (linksmin != null && linksmin != "") linksminval = int.parse(linksmin);
-    if (linksmax != null && linksmax != "") linksmaxval = int.parse(linksmax);
     jsonResult['query']['term'] = value;
     jsonResult['query']['filters']['socket_filters']['filters']['links']
-        ['min'] = linksminval;
+        ['min'] = linksmin;
     jsonResult['query']['filters']['socket_filters']['filters']['links']
-        ['max'] = linksmaxval;
+        ['max'] = linksmax;
     jsonResult['query']['filters']['trade_filters']['filters']['price']
         ['option'] = allcode[allcurrency.indexOf(nowcurrency)];
+    jsonResult['query']['filters']['trade_filters']['filters']['price']['min'] = paymin;
+    jsonResult['query']['filters']['trade_filters']['filters']['price']['max'] = paymax;
+    List<dynamic> affixfilter = jsonResult['query']['stats'][0]['filters'];
+    for(int i=0;i<affix_selected.length;i++){
+      Map value = {'min': affix_selected[i].mincontroller.text, 'max': affix_selected[i].maxcontroller.text};
+      affixfilter.add({'id': affix_selected[i].affixitem.entries.id, 'disabled': false, 'value': value});
+    }
     Map params = jsonResult;
     Map<String, String> headers = {
       'Content-type': 'application/json',
@@ -137,7 +167,12 @@ class api {
     }
     return tmp;
   }
-
+  String executeIncubated(Map incubatedItem) {
+    if(incubatedItem!=null)
+      return '培育之 '+ incubatedItem['name'];
+    else
+      return "";
+  }
   void fetchItems(List<String> id, String queryUrl) async {
     if (id.length > 0) {
       String fetchUrl = baseUrl + "api/trade/fetch/" + id.join(",");
@@ -170,6 +205,7 @@ class api {
             if (item['frameType'] > 5) item['frameType'] = 5;
             item['implicitMods'] = executeMods(result['item']['implicitMods']);
             item['explicitMods'] = executeMods(result['item']['explicitMods']);
+            item['incubatedItem'] = executeIncubated(result['item']['incubatedItem']);
             if (result['item']['identified'] == false)
               item['explicitMods'] = "未鑑定";
             item['corrupted'] = result['item']['corrupted'];
@@ -179,5 +215,27 @@ class api {
         }
       });
     }
+  }
+
+  Future<List<affix>> getStat() async {
+    String fetchUrl = baseUrl + "api/trade/data/stats/";
+    List<affix> affixlist = new List<affix>();
+    await dio.get(fetchUrl).then((response) {
+      if (response.statusCode == 200) {
+        List<dynamic> result = response.data['result'];
+        for (int i = 0; i < result.length; i++) {
+          String label = result[i]['label'];
+          List<dynamic> entries = result[i]['entries'];
+            for (int j = 0; j < entries.length; j++) {
+              affix tmp = new affix(
+                  label,
+                  new affixDetail(
+                      entries[j]['id'], entries[j]['text'], entries[j]['type']));
+              affixlist.add(tmp);
+            }
+        }
+      }
+    });
+    return affixlist;
   }
 }

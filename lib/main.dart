@@ -1,14 +1,11 @@
-import 'dart:collection';
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
+import 'package:poe_search/affix_controller.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
-import 'package:intl/intl.dart';
-import 'dart:convert';
 import 'widgets/result.dart';
 import 'widgets/search.dart';
 import 'package:expandable/expandable.dart';
-import 'package:autocomplete_textfield/autocomplete_textfield.dart';
 import 'api.dart';
+import 'widgets/filterpanel.dart';
 
 void main() => runApp(MyApp());
 
@@ -27,7 +24,6 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-
 List<Color> frameType = [
   Color(0xffc8c8c8),
   Color(0xff8888ff),
@@ -37,30 +33,21 @@ List<Color> frameType = [
   Color(0xffaa9e82)
 ];
 api apitool = new api();
+List<affix_controller> affix_selected = new List<affix_controller>();
+
 class _MyHomePageState extends State<MyHomePage> {
   ScrollController _scrollController = new ScrollController();
-  TextEditingController _mincontroller;
-  TextEditingController _maxcontroller;
-  ExpandableController _expandableController =
-      new ExpandableController(initialExpanded: false);
-  GlobalKey<AutoCompleteTextFieldState<String>> key = new GlobalKey();
-  List<String> suggestions = [
-    "火焰抗性",
-    "冰冷抗性",
-    "閃電抗性",
-  ];
+  ExpandableController _expandableController = new ExpandableController();
   @override
   void initState() {
     super.initState();
     apitool.first = true;
     apitool.searchflag = false;
-    apitool.getleagues();
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    List<Widget> filterpanel;
     apitool.nullAlert = Alert(
       context: context,
       type: AlertType.warning,
@@ -83,112 +70,33 @@ class _MyHomePageState extends State<MyHomePage> {
           shrinkWrap: true,
           controller: _scrollController,
           children: <Widget>[
-            ListView(
-                shrinkWrap: true,
-                physics: ClampingScrollPhysics(),
-                children: <Widget>[
-                  searchInput((String value) {
-                    apitool.submitText = value;
-                  }, () {
-                    if (_expandableController.expanded)
-                      _expandableController.toggle();
-                  }, (String value) async {
-                    apitool.submitText = value;
-                    await apitool.search(context);
-                  }),
-                  Container(
-                      padding: EdgeInsets.only(left: 20.0, top: 10.0),
-                      child: ExpandablePanel(
-                        controller: _expandableController,
-                        tapHeaderToExpand: true,
-                        tapBodyToCollapse: true,
-                        headerAlignment: ExpandablePanelHeaderAlignment.center,
-                        header: Padding(
-                            padding: EdgeInsets.all(10),
-                            child: Text(
-                              "顯示篩選",
-                              style: Theme.of(context).textTheme.body2,
-                            )),
-                        expanded: Column(
-                          children: <Widget>[
-                            Container(
-                                alignment: Alignment.centerLeft,
-                                padding: EdgeInsets.only(left: 10.0, top: 10.0),
-                                child: Row(children: <Widget>[
-                                  Container(
-                                      color: Color(0xffe2e2e2),
-                                      child: dropDownList(
-                                        apitool.allcurrency,
-                                        apitool.selectedprice,
-                                        (String newValue) {
-                                          setState(() {
-                                            apitool.selectedprice = newValue;
-                                          });
-                                        },
-                                      )),
-                                  Padding(
-                                    padding: EdgeInsets.all(5),
-                                  ),
-                                  Container(
-                                      color: Color(0xffe2e2e2),
-                                      child: dropDownList(
-                                        apitool.leagues,
-                                        apitool.selectedleague,
-                                        (String newValue) {
-                                          setState(() {
-                                            apitool.selectedleague = newValue;
-                                          });
-                                        },
-                                      ))
-                                ])),
-                            valueFilter("插槽連結", _mincontroller, _maxcontroller,
-                                (String value) {
-                              apitool.linksmin = value;
-                            }, (String value) {
-                              apitool.linksmax = value;
-                            },(){print("K");}),
-                            Container(
-                                padding: EdgeInsets.all(10),
-                                child: AutoCompleteTextField<String>(
-                                  itemSubmitted: (item) => (print(item)),
-                                  itemBuilder: (context, suggestion) =>
-                                      new ListTile(title: new Text(suggestion)),
-                                  onTap: () async { 
-                                    await new Future.delayed(new Duration(milliseconds: 1000));
-                                    _scrollController.animateTo(
-                                         _scrollController.position.maxScrollExtent,
-                                         duration: Duration(milliseconds: 300),
-                                         curve: Curves.ease);
-                                  },
-                                  onFocusChanged: (bool changed) {
-                                    if (changed)
-                                      _scrollController.jumpTo(_scrollController
-                                          .position.maxScrollExtent);
-                                  },
-                                  itemSorter: (a, b) =>
-                                      a == b ? 0 : a.length > b.length ? -1 : 1,
-                                  itemFilter: (suggestion, input) => suggestion
-                                      .toLowerCase()
-                                      .startsWith(input.toLowerCase()),
-                                  key: key,
-                                  decoration: new InputDecoration(
-                                      hintText: "+新增數值過濾",
-                                      border: InputBorder.none,
-                                      fillColor: Color(0xffe2e2e2),
-                                      filled: true),
-                                  controller: TextEditingController(),
-                                  suggestions: suggestions,
-                                  textChanged: (text) => apitool.filtertext = text,
-                                  submitOnSuggestionTap: true,
-                                ))
-                          ],
-                        ),
-                        collapsed: null,
-                      ))
-                ]),
+            searchInput((String value) {
+              apitool.submitText = value;
+            }, () {
+              if (_expandableController.expanded)
+                _expandableController.toggle();
+            }, (String value) async {
+              apitool.submitText = value;
+              apitool.affix_selected = affix_selected;
+              if (_expandableController.expanded)
+                _expandableController.toggle();
+              if (!apitool.searchflag) {
+                apitool.searchflag = true;
+                setState(() {});
+              }
+              await apitool.search(context);
+              apitool.searchflag = false;
+              setState(() {});
+            }),
+            new Filterpanel(
+              scrollController: _scrollController,
+              apitool: apitool,
+              expandableController: _expandableController,
+              affix_selected: affix_selected,
+            ),
             Container(
                 width: double.infinity,
-                padding: EdgeInsets.only(left: 20.0, right: 20.0),
+                padding: EdgeInsets.only(left: 20.0, right: 20.0, top: 5),
                 child: RaisedButton(
                   child: new Text(apitool.searchflag ? "搜尋中..." : "搜尋",
                       style: TextStyle(color: Colors.white)),
@@ -198,6 +106,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   onPressed: apitool.searchflag
                       ? null
                       : () async {
+                          apitool.affix_selected = affix_selected;
+                          if (_expandableController.expanded)
+                            _expandableController.toggle();
                           if (!apitool.searchflag) {
                             apitool.searchflag = true;
                             setState(() {});
@@ -212,7 +123,9 @@ class _MyHomePageState extends State<MyHomePage> {
               physics: ClampingScrollPhysics(),
               itemCount: apitool.listLength,
               itemBuilder: (BuildContext context, int index) {
-                if (apitool.first && apitool.displayItem.length == 0 && index == 0) {
+                if (apitool.first &&
+                    apitool.displayItem.length == 0 &&
+                    index == 0) {
                   return new Container(
                       alignment: Alignment.center,
                       margin: const EdgeInsets.symmetric(
@@ -225,8 +138,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 } else if (apitool.displayItem.length != 0 &&
                     apitool.displayItemId.length != 0) {
                   Map item = apitool.displayItem[apitool.displayItemId[index]];
-                  int currencyIndex = apitool.allcurrency.indexOf(apitool.nowcurrency);
-                  String url = apitool.currencyIcon[apitool.allcode[currencyIndex]];
+                  int currencyIndex =
+                      apitool.allcurrency.indexOf(apitool.nowcurrency);
+                  String url =
+                      apitool.currencyIcon[apitool.allcode[currencyIndex]];
                   return new SingleChildScrollView(
                       child: Container(
                           margin: const EdgeInsets.symmetric(
@@ -240,7 +155,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                 height: 240,
                                 child: Container(
                                   child: Image.network(
-                                    apitool.baseUrl.substring(0, apitool.baseUrl.length - 1) +
+                                    apitool.baseUrl.substring(
+                                            0, apitool.baseUrl.length - 1) +
                                         item['icon'],
                                     fit: BoxFit.scaleDown,
                                   ),
@@ -279,6 +195,10 @@ class _MyHomePageState extends State<MyHomePage> {
                                               alignment: Alignment.centerLeft,
                                               child: mods(item['explicitMods'],
                                                   Color(0xff8888FF))),
+                                          Container(
+                                              alignment: Alignment.centerLeft,
+                                              child: mods(item['incubatedItem'],
+                                                  Color(0xffb4b4ff))),
                                           Container(
                                               alignment: Alignment.centerLeft,
                                               child:
@@ -345,6 +265,4 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         )));
   }
-
- 
 }
